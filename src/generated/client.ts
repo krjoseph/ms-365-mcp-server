@@ -7895,7 +7895,7 @@ const endpoints = makeApi([
         name: 'body',
         description: `New media content.`,
         type: 'Body',
-        schema: z.instanceof(File),
+        schema: z.any().describe('File content for upload'),
       },
     ],
     response: z.void(),

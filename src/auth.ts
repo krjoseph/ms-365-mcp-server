@@ -1,10 +1,25 @@
 import type { AccountInfo, Configuration } from '@azure/msal-node';
 import { PublicClientApplication } from '@azure/msal-node';
-import keytar from 'keytar';
 import logger from './logger.js';
 import fs, { existsSync, readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import path from 'path';
+
+// Conditional keytar import - will be undefined if not available
+let keytar: any = null;
+
+async function initializeKeytar(): Promise<void> {
+  if (keytar === null) {
+    try {
+      const keytarModule = await import('keytar');
+      keytar = keytarModule.default;
+      logger.info('Keytar initialized successfully');
+    } catch (error) {
+      logger.warn('Keytar not available, will use file storage for credentials');
+      keytar = null;
+    }
+  }
+}
 
 interface EndpointConfig {
   pathPattern: string;
@@ -121,9 +136,16 @@ class AuthManager {
       let cacheData: string | undefined;
 
       try {
-        const cachedData = await keytar.getPassword(SERVICE_NAME, TOKEN_CACHE_ACCOUNT);
-        if (cachedData) {
-          cacheData = cachedData;
+        await initializeKeytar();
+        if (keytar) {
+          const cachedData = await keytar.getPassword(SERVICE_NAME, TOKEN_CACHE_ACCOUNT);
+          if (cachedData) {
+            cacheData = cachedData;
+          }
+        } else {
+          logger.warn(
+            `Keychain access failed, falling back to file storage: Keytar not available`
+          );
         }
       } catch (keytarError) {
         logger.warn(
@@ -151,9 +173,16 @@ class AuthManager {
       let selectedAccountData: string | undefined;
 
       try {
-        const cachedData = await keytar.getPassword(SERVICE_NAME, SELECTED_ACCOUNT_KEY);
-        if (cachedData) {
-          selectedAccountData = cachedData;
+        await initializeKeytar();
+        if (keytar) {
+          const cachedData = await keytar.getPassword(SERVICE_NAME, SELECTED_ACCOUNT_KEY);
+          if (cachedData) {
+            selectedAccountData = cachedData;
+          }
+        } else {
+          logger.warn(
+            `Keychain access failed for selected account, falling back to file storage: Keytar not available`
+          );
         }
       } catch (keytarError) {
         logger.warn(
@@ -180,7 +209,15 @@ class AuthManager {
       const cacheData = this.msalApp.getTokenCache().serialize();
 
       try {
-        await keytar.setPassword(SERVICE_NAME, TOKEN_CACHE_ACCOUNT, cacheData);
+        await initializeKeytar();
+        if (keytar) {
+          await keytar.setPassword(SERVICE_NAME, TOKEN_CACHE_ACCOUNT, cacheData);
+        } else {
+          logger.warn(
+            `Keychain save failed, falling back to file storage: Keytar not available`
+          );
+          fs.writeFileSync(FALLBACK_PATH, cacheData);
+        }
       } catch (keytarError) {
         logger.warn(
           `Keychain save failed, falling back to file storage: ${(keytarError as Error).message}`
@@ -198,7 +235,15 @@ class AuthManager {
       const selectedAccountData = JSON.stringify({ accountId: this.selectedAccountId });
 
       try {
-        await keytar.setPassword(SERVICE_NAME, SELECTED_ACCOUNT_KEY, selectedAccountData);
+        await initializeKeytar();
+        if (keytar) {
+          await keytar.setPassword(SERVICE_NAME, SELECTED_ACCOUNT_KEY, selectedAccountData);
+        } else {
+          logger.warn(
+            `Keychain save failed for selected account, falling back to file storage: Keytar not available`
+          );
+          fs.writeFileSync(SELECTED_ACCOUNT_PATH, selectedAccountData);
+        }
       } catch (keytarError) {
         logger.warn(
           `Keychain save failed for selected account, falling back to file storage: ${(keytarError as Error).message}`
@@ -377,8 +422,13 @@ class AuthManager {
       this.selectedAccountId = null;
 
       try {
-        await keytar.deletePassword(SERVICE_NAME, TOKEN_CACHE_ACCOUNT);
-        await keytar.deletePassword(SERVICE_NAME, SELECTED_ACCOUNT_KEY);
+        await initializeKeytar();
+        if (keytar) {
+          await keytar.deletePassword(SERVICE_NAME, TOKEN_CACHE_ACCOUNT);
+          await keytar.deletePassword(SERVICE_NAME, SELECTED_ACCOUNT_KEY);
+        } else {
+          logger.warn(`Keychain deletion failed: Keytar not available`);
+        }
       } catch (keytarError) {
         logger.warn(`Keychain deletion failed: ${(keytarError as Error).message}`);
       }
