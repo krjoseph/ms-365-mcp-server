@@ -4,12 +4,46 @@ import logger from '../logger.js';
 /**
  * Microsoft Bearer Token Auth Middleware validates that the request has a valid Microsoft access token
  * The token is passed in the Authorization header as a Bearer token
+ * 
+ * Note: MCP protocol methods for server discovery and tool listing are allowed without authentication
  */
 export const microsoftBearerTokenAuthMiddleware = (
   req: Request & { microsoftAuth?: { accessToken: string; refreshToken: string } },
   res: Response,
   next: NextFunction
 ): void => {
+  // Check if this is an MCP protocol method that should be allowed without authentication
+  if (req.method === 'POST' && req.body) {
+    try {
+      const mcpRequest = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      
+      // Allow MCP protocol methods without authentication for server discovery and tool listing
+      const allowedWithoutAuth = [
+        'initialize',           // Initialize the server
+        'tools/list',           // List available tools
+        'server/info',          // Get server information
+        'server/capabilities',  // Get server capabilities
+        'server/status'         // Get server status
+      ];
+      
+      if (allowedWithoutAuth.includes(mcpRequest.method)) {
+        logger.info(`Allowing MCP ${mcpRequest.method} call without authentication`);
+        next();
+        return;
+      }
+    } catch (error) {
+      // If we can't parse the body, continue with normal auth flow
+      logger.debug('Could not parse MCP request body, proceeding with authentication');
+    }
+  }
+  
+  // Allow GET requests to /mcp without authentication (typically used for server discovery)
+  if (req.method === 'GET' && req.path === '/mcp') {
+    logger.info('Allowing MCP GET request without authentication for server discovery');
+    next();
+    return;
+  }
+
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {

@@ -260,7 +260,7 @@ This method:
 - Use your pre-existing OAuth token for Microsoft Graph API requests
 - Does not handle token refresh (token lifecycle management is your responsibility)
 
-> **Note**: HTTP mode requires authentication. For unauthenticated testing, use stdio mode with device code flow.
+> **Note**: HTTP mode requires authentication for tool execution. However, MCP protocol methods like `tools/list`, `server/info`, and `server/capabilities` are available without authentication to enable server discovery and tool listing.
 >
 > **Authentication Tools**: In HTTP mode, login/logout tools are disabled by default since OAuth handles authentication.
 > Use `--enable-auth-tools` if you need them available.
