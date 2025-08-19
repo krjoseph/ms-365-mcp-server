@@ -15,7 +15,7 @@ heroku whoami &> /dev/null || heroku login
 
 # Create Procfile if it doesn't exist
 if [ ! -f Procfile ]; then
-    echo 'web: npx tsx src/index.ts --org-mode --http 8009 $PORT --enabled-tools "chat|channel|team"' > Procfile
+    echo 'web: npx tsx src/index.ts --org-mode --http $PORT --enabled-tools "chat|channel|team"' > Procfile
     echo "Created Procfile."
 fi
 
