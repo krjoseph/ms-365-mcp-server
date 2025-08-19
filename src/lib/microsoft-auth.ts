@@ -16,6 +16,7 @@ export const microsoftBearerTokenAuthMiddleware = (
   if (req.method === 'POST' && req.body) {
     try {
       const mcpRequest = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      logger.info(`MCP request: ${JSON.stringify(mcpRequest)}`);
       
       // Allow MCP protocol methods without authentication for server discovery and tool listing
       const allowedWithoutAuth = [
@@ -47,6 +48,7 @@ export const microsoftBearerTokenAuthMiddleware = (
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    logger.error('Missing or invalid access token');
     res.status(401).json({ error: 'Missing or invalid access token' });
     return;
   }
