@@ -20,11 +20,14 @@ export const microsoftBearerTokenAuthMiddleware = (
       
       // Allow MCP protocol methods without authentication for server discovery and tool listing
       const allowedWithoutAuth = [
-        'initialize',           // Initialize the server
-        'tools/list',           // List available tools
-        'server/info',          // Get server information
-        'server/capabilities',  // Get server capabilities
-        'server/status'         // Get server status
+        'initialize',                 // Initialize the server
+        'notifications/initialized',  // Initialize notifications
+        'tools/list',                 // List available tools
+        'tools/describe',             // Describe a tool
+        'tools/invoke',               // Invoke a tool
+        'server/info',                // Get server information
+        'server/capabilities',        // Get server capabilities
+        'server/status',              // Get server status
       ];
       
       if (allowedWithoutAuth.includes(mcpRequest.method)) {
